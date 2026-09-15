@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar à Restos BAB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        chicBg: '#121212',
+                        chicCard: '#1E1E1E',
+                        chicGold: '#D4AF37',
+                        chicGoldDim: 'rgba(212, 175, 55, 0.2)',
+                        chicText: '#EAEAEA',
+                        chicMuted: '#9CA3AF'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Effet visuel chic pour la roulette */
+        .roulette-active {
+            box-shadow: 0 0 20px #D4AF37;
+            border-color: #D4AF37 !important;
+            transform: scale(1.02);
+            transition: all 0.1s ease-in-out;
+        }
+        
+        .winner-card {
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
+            border-color: #D4AF37 !important;
+            animation: pulse-gold 2s infinite;
+        }
+
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(212, 175, 55, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+        }
+    </style>
+</head>
+<body class="bg-chicBg text-chicText font-sans pb-28 selection:bg-chicGold selection:text-chicBg antialiased">
+
+    <header class="bg-chicBg/80 backdrop-blur-xl border-b border-white/10 sticky top-0 z-30 pt-6 pb-4 px-4 shadow-2xl">
+        <div class="max-w-3xl mx-auto flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-serif font-semibold text-chicGold tracking-wide">Le Radar<span class="italic text-white">.</span></h1>
+                    <p class="text-xs text-chicMuted uppercase tracking-widest mt-1">Bayonne • Anglet • Biarritz</p>
+                </div>
+                <button onclick="triggerRoulette()" class="flex items-center gap-2 bg-chicGold/10 border border-chicGold text-chicGold px-4 py-2 rounded-full font-serif italic hover:bg-chicGold hover:text-chicBg transition-all duration-300">
+                    <span class="text-xl">🎲</span> Au Hasard
+                </button>
+            </div>
+            
+            <div class="flex flex-col gap-3 mt-2">
+                <!-- Villes -->
+                <div class="flex gap-2 overflow-x-auto hide-scroll pb-1" id="city-filters">
+                    <button onclick="setCity('Tous')" class="city-btn active shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-chicGold bg-chicGold text-chicBg">Côte Basque</button>
+                    <button onclick="setCity('Bayonne')" class="city-btn shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">Bayonne</button>
+                    <button onclick="setCity('Anglet')" class="city-btn shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">Anglet</button>
+                    <button onclick="setCity('Biarritz')" class="city-btn shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">Biarritz</button>
+                </div>
+                
+                <!-- NOUVEAU : Filtre par Prix -->
+                <div class="flex gap-2 overflow-x-auto hide-scroll pb-1 mt-1 mb-2" id="price-filters">
+                    <button onclick="setPrice('Tous')" class="price-btn active shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-chicGold bg-chicGold text-chicBg font-medium">Tous les prix</button>
+                    <button onclick="setPrice('€')" class="price-btn shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">€ (Sur le pouce)</button>
+                    <button onclick="setPrice('€€')" class="price-btn shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">€€ (Abordable)</button>
+                    <button onclick="setPrice('€€€')" class="price-btn shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">€€€ (Chic)</button>
+                    <button onclick="setPrice('€€€€')" class="price-btn shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50">€€€€ (Gastro)</button>
+                </div>
+
+                <!-- Statut (Testé / À tester) -->
+                <div class="flex bg-white/5 rounded-xl p-1 border border-white/10 w-full max-w-sm">
+                    <button onclick="setStatus('Tous')" id="status-Tous" class="status-btn flex-1 py-1.5 rounded-lg text-sm font-medium bg-white/10 text-white transition-all shadow-sm">Tout voir</button>
+                    <button onclick="setStatus('À tester')" id="status-À tester" class="status-btn flex-1 py-1.5 rounded-lg text-sm font-medium text-chicMuted hover:text-white transition-all">🍽️ À tester</button>
+                    <button onclick="setStatus('Validé')" id="status-Validé" class="status-btn flex-1 py-1.5 rounded-lg text-sm font-medium text-chicMuted hover:text-white transition-all">✨ Approuvés</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 mt-6">
+        <div id="restos-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Rempli par JavaScript -->
+        </div>
+    </main>
+
+    <button onclick="openAddModal()" class="fixed bottom-8 right-6 bg-chicGold text-chicBg h-14 w-14 flex items-center justify-center rounded-full shadow-[0_4px_20px_rgba(212,175,55,0.4)] hover:scale-110 transition-transform z-20 text-2xl border border-yellow-200">
+        +
+    </button>
+
+    <dialog id="add-modal" class="p-0 rounded-2xl shadow-2xl backdrop:bg-black/80 bg-chicCard border border-white/10 max-w-md w-full mx-auto mt-20 text-white">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-serif text-chicGold">Nouvelle Table</h3>
+                <button onclick="closeAddModal()" class="text-white/50 hover:text-white text-2xl font-light leading-none">&times;</button>
+            </div>
+            <form id="add-form" onsubmit="submitNewResto(event)" class="space-y-4 font-sans">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Nom du restaurant</label>
+                    <input type="text" id="f-nom" required placeholder="Ex: L'Impertinent" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white transition-colors">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Ville</label>
+                        <select id="f-ville" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                            <option value="Bayonne">Bayonne</option>
+                            <option value="Anglet">Anglet</option>
+                            <option value="Biarritz">Biarritz</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Budget</label>
+                        <select id="f-prix" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                            <option value="€">€ (Sur le pouce)</option>
+                            <option value="€€">€€ (Abordable)</option>
+                            <option value="€€€">€€€ (Chic)</option>
+                            <option value="€€€€">€€€€ (Gastro)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Type / Ambiance</label>
+                        <input type="text" id="f-type" required placeholder="Ex: Bistronomique" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Statut</label>
+                        <select id="f-statut" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                            <option value="À tester">À tester</option>
+                            <option value="Validé">Validé</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Lien Instagram ou Site (Optionnel)</label>
+                    <input type="url" id="f-url" placeholder="https://..." class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                </div>
+                
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-chicMuted mb-1">Note pour plus tard</label>
+                    <input type="text" id="f-note" placeholder="Ex: Réserver la table vue mer..." class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-chicGold text-white">
+                </div>
+
+                <button type="submit" class="w-full bg-chicGold text-chicBg font-serif italic text-lg py-3 rounded-lg mt-4 hover:bg-yellow-500 transition-colors">
+                    Ajouter à la carte
+                </button>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="confirm-modal" class="p-0 rounded-2xl shadow-2xl backdrop:bg-black/80 bg-chicCard border border-white/10 max-w-sm w-full mx-auto mt-40 text-white">
+        <div class="p-6 text-center">
+            <div class="text-3xl mb-3">🗑️</div>
+            <h3 class="text-xl font-serif text-white mb-2">Retirer ce restaurant ?</h3>
+            <p class="text-sm text-chicMuted mb-6">Cette action est définitive.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-lg border border-white/20 text-white hover:bg-white/10 transition-colors">Annuler</button>
+                <button id="btn-confirm-delete" class="flex-1 py-2.5 rounded-lg bg-red-900/50 text-red-400 border border-red-900/50 hover:bg-red-900 hover:text-white transition-colors">Supprimer</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        const STORAGE_KEY = 'radar_restos_bab_v2';
+        
+        // Base de données géante : 105 pépites du BAB !
+        const baseRestos = [
+            // BAYONNE - € (Pas cher)
+            { id: 1, nom: "Le Kalostrape", ville: "Bayonne", type: "Tapas / Basque", prix: "€", statut: "À tester", url: "", note: "Ambiance locale garantie, pintxos abordables." },
+            { id: 2, nom: "Bar du Marché", ville: "Bayonne", type: "Bistrot / Halles", prix: "€", statut: "Validé", url: "", note: "Le QG du samedi matin aux halles, hyper vivant." },
+            { id: 3, nom: "Taloa Ta Ardoa", ville: "Bayonne", type: "Street Food basque", prix: "€", statut: "À tester", url: "", note: "Taloas maison super bons." },
+            { id: 4, nom: "Le Zinzolin", ville: "Bayonne", type: "Vins / Tapas", prix: "€", statut: "À tester", url: "", note: "Sur les quais de Nive, parfait pour l'apéro." },
+            { id: 5, nom: "Pizzeria des Arceaux", ville: "Bayonne", type: "Pizzeria", prix: "€", statut: "À tester", url: "", note: "Les meilleures pizzas sous les arceaux, simple et efficace." },
+            { id: 6, nom: "Kubata", ville: "Bayonne", type: "Bar / Pintxos", prix: "€", statut: "À tester", url: "", note: "Top pour boire un verre avec de bonnes rations." },
+            { id: 7, nom: "Le P'tit Pub", ville: "Bayonne", type: "Pub / Burger", prix: "€", statut: "À tester", url: "", note: "Ambiance rugby et bières locales." },
+            { id: 8, nom: "La Karafe", ville: "Bayonne", type: "Bar à vins", prix: "€", statut: "À tester", url: "", note: "Planches et vin dans les petites rues de Bayonne." },
+            { id: 9, nom: "Bakea", ville: "Bayonne", type: "Boulangerie / Sandwichs", prix: "€", statut: "Validé", url: "", note: "Sandwichs incroyables pour le midi." },
+            { id: 10, nom: "San Nicolas", ville: "Bayonne", type: "Pintxos", prix: "€", statut: "À tester", url: "", note: "Un classique du petit Bayonne." },
+            { id: 11, nom: "Xurasko", ville: "Bayonne", type: "Bar / Tapas", prix: "€", statut: "À tester", url: "", note: "Très festif le week-end." },
+            
+            // BAYONNE - €€ (Abordable)
+            { id: 12, nom: "Janine", ville: "Bayonne", type: "Bistronomique", prix: "€€", statut: "À tester", url: "", note: "Hyper créatif, menu qui change tout le temps." },
+            { id: 13, nom: "Influences", ville: "Bayonne", type: "Bistrot Moderne", prix: "€€", statut: "À tester", url: "", note: "Super ambiance, belle carte des vins." },
+            { id: 14, nom: "Brasserie Basa", ville: "Bayonne", type: "Brasserie chic", prix: "€€", statut: "Validé", url: "", note: "Super cadre dans l'ancien tribunal." },
+            { id: 15, nom: "Chez Gilles", ville: "Bayonne", type: "Bistrot", prix: "€€", statut: "À tester", url: "", note: "Valeur sûre, très bonne viande." },
+            { id: 16, nom: "Maison Balme", ville: "Bayonne", type: "Truffes / Halles", prix: "€€", statut: "Validé", url: "", note: "Omelette à la truffe incroyable." },
+            { id: 17, nom: "Le Chistera", ville: "Bayonne", type: "Traditionnel basque", prix: "€€", statut: "À tester", url: "", note: "Plats copieux et typiques." },
+            { id: 18, nom: "L'Épicerie", ville: "Bayonne", type: "Bistrot", prix: "€€", statut: "À tester", url: "", note: "Petit resto chaleureux près des halles." },
+            { id: 19, nom: "La Table du soir", ville: "Bayonne", type: "Traditionnel", prix: "€€", statut: "À tester", url: "", note: "Très sympa pour un dîner décontracté." },
+            { id: 20, nom: "Bistrot Sainte Cluque", ville: "Bayonne", type: "Brasserie basque", prix: "€€", statut: "À tester", url: "", note: "Grosse ambiance quartier gare." },
+            { id: 21, nom: "Gochoki", ville: "Bayonne", type: "Bistrot", prix: "€€", statut: "À tester", url: "", note: "Produits locaux bien travaillés." },
+            
+            // BAYONNE - €€€ / €€€€ (Chic & Gastro)
+            { id: 22, nom: "Sillon (Sébastien Gravé)", ville: "Bayonne", type: "Gastro", prix: "€€€", statut: "À tester", url: "", note: "Le top de Bayonne, pour une belle occasion." },
+            { id: 23, nom: "Osméra", ville: "Bayonne", type: "Gastro Intime", prix: "€€€", statut: "À tester", url: "", note: "Très belle découverte Michelin." },
+            { id: 24, nom: "La Table de Pottoka", ville: "Bayonne", type: "Gastro basque", prix: "€€€", statut: "À tester", url: "", note: "Déclinaison parisienne à Bayonne." },
+            { id: 25, nom: "Auberge du Cheval Blanc", ville: "Bayonne", type: "Étoilé", prix: "€€€€", statut: "À tester", url: "", note: "L'institution gastronomique (1 étoile)." },
+
+            // ANGLET - € (Pas cher)
+            { id: 26, nom: "Bask Coast", ville: "Anglet", type: "Burgers / Bowl", prix: "€", statut: "Validé", url: "", note: "Face à la mer, parfait pour le déj rapide." },
+            { id: 27, nom: "Lagunak", ville: "Anglet", type: "Cabane / Tapas", prix: "€", statut: "À tester", url: "", note: "La cabane iconique de la plage des Corsaires." },
+            { id: 28, nom: "Shelter", ville: "Anglet", type: "Street food", prix: "€", statut: "À tester", url: "", note: "Idéal après le surf." },
+            { id: 29, nom: "Le Spot", ville: "Anglet", type: "Snack de plage", prix: "€", statut: "À tester", url: "", note: "Coucher de soleil imbattable." },
+            { id: 30, nom: "La Choppe", ville: "Anglet", type: "Pub / Burgers", prix: "€", statut: "À tester", url: "", note: "Convivial et pas prise de tête." },
+            { id: 31, nom: "Les Corsaires", ville: "Anglet", type: "Guinguette", prix: "€", statut: "À tester", url: "", note: "Très détente." },
+            { id: 32, nom: "Bali Bowls Anglet", ville: "Anglet", type: "Healthy / Acai", prix: "€", statut: "À tester", url: "", note: "Pour faire le plein de vitamines l'été." },
+            { id: 33, nom: "Txalupa", ville: "Anglet", type: "Pintxos", prix: "€", statut: "À tester", url: "", note: "Nouveauté sympa à la Chambre d'Amour." },
+            { id: 34, nom: "Food-truck Chambre d'Amour", ville: "Anglet", type: "Street Food", prix: "€", statut: "À tester", url: "", note: "Rapide et face à l'océan." },
+            { id: 35, nom: "Ty-Bolo", ville: "Anglet", type: "Crêperie", prix: "€", statut: "À tester", url: "", note: "Crêpes pas chères." },
+            
+            // ANGLET - €€ (Abordable)
+            { id: 36, nom: "Kostaldea", ville: "Anglet", type: "Guinguette chic", prix: "€€", statut: "À tester", url: "", note: "Le meilleur spot pour le coucher de soleil avec quelques tapas." },
+            { id: 37, nom: "Beach House", ville: "Anglet", type: "World food / Brunch", prix: "€€", statut: "Validé", url: "", note: "Cadre piscine magnifique, ambiance de folie." },
+            { id: 38, nom: "L'Oeuf Poché", ville: "Anglet", type: "Brunch", prix: "€€", statut: "À tester", url: "", note: "Idéal pour un brunch tardif après la plage." },
+            { id: 39, nom: "Arrantzaleak", ville: "Anglet", type: "Poissons / Ciboure", prix: "€€", statut: "À tester", url: "", note: "Le top du poisson sur la côte." },
+            { id: 40, nom: "Vent d'Ouest", ville: "Anglet", type: "Brasserie de plage", prix: "€€", statut: "À tester", url: "", note: "Face à la mer, grand classique." },
+            { id: 41, nom: "La Pampa", ville: "Anglet", type: "Argentin / Viandes", prix: "€€", statut: "À tester", url: "", note: "Superbes viandes grillées." },
+            { id: 42, nom: "Aux Moules", ville: "Anglet", type: "Fruits de mer", prix: "€€", statut: "À tester", url: "", note: "Simple, efficace, en terrasse." },
+            { id: 43, nom: "L'Instant", ville: "Anglet", type: "Bistrot", prix: "€€", statut: "À tester", url: "", note: "Très belle cuisine de marché." },
+            { id: 44, nom: "John Doe", ville: "Anglet", type: "Burger chic", prix: "€€", statut: "À tester", url: "", note: "Des burgers de haut vol." },
+            { id: 45, nom: "Patxama", ville: "Anglet", type: "Cuisine locale", prix: "€€", statut: "À tester", url: "", note: "Très bon rapport qualité prix." },
+            { id: 46, nom: "L'Epi Café", ville: "Anglet", type: "Brasserie", prix: "€€", statut: "À tester", url: "", note: "Sympa pour un midi." },
+            
+            // ANGLET - €€€ (Chic)
+            { id: 47, nom: "Chistera & Co", ville: "Anglet", type: "Bistrot Chic", prix: "€€€", statut: "À tester", url: "", note: "Cuisine locale très raffinée." },
+            { id: 48, nom: "Olatua", ville: "Anglet", type: "Vue panoramique", prix: "€€€", statut: "À tester", url: "", note: "Sur le toit de l'Espace de l'Océan." },
+            { id: 49, nom: "Le Blue Cargo", ville: "Anglet", type: "Restaurant festif", prix: "€€€", statut: "À tester", url: "", note: "Un peu cher mais cadre incroyable sur la plage d'Ilbarritz (frontière)." },
+
+            // BIARRITZ - € (Pas cher)
+            { id: 50, nom: "Etxola Bibi", ville: "Biarritz", type: "Cabane / Tapas", prix: "€", statut: "Validé", url: "", note: "La vue sur la Côte des Basques à l'apéro, mythique." },
+            { id: 51, nom: "Crampotte 30", ville: "Biarritz", type: "Tapas / Port", prix: "€", statut: "À tester", url: "", note: "Ambiance pêcheur au Port des Pêcheurs." },
+            { id: 52, nom: "Palmito", ville: "Biarritz", type: "Food Court", prix: "€", statut: "À tester", url: "", note: "Plein de stands différents, cool entre potes." },
+            { id: 53, nom: "Bali Bowls", ville: "Biarritz", type: "Healthy", prix: "€", statut: "À tester", url: "", note: "Le classique post-surf." },
+            { id: 54, nom: "Los Dos Hermanos", ville: "Biarritz", type: "Mexicain", prix: "€", statut: "À tester", url: "", note: "Tacos excellents et pas chers." },
+            { id: 55, nom: "Joie", ville: "Biarritz", type: "Pizza au poids", prix: "€", statut: "À tester", url: "", note: "Concept italien génial." },
+            { id: 56, nom: "La Tireuse", ville: "Biarritz", type: "Pub", prix: "€", statut: "À tester", url: "", note: "Bières et planches sympas." },
+            { id: 57, nom: "Milwaukee", ville: "Biarritz", type: "Coffee Shop", prix: "€", statut: "Validé", url: "", note: "Super pour un goûter ou lunch US." },
+            { id: 58, nom: "Le Comptoir de la Plage", ville: "Biarritz", type: "Snack chic", prix: "€", statut: "À tester", url: "", note: "Rapide face à la grande plage." },
+            { id: 59, nom: "Burger des Halles", ville: "Biarritz", type: "Street Food", prix: "€", statut: "À tester", url: "", note: "Pour caler une fringale de minuit." },
+            { id: 60, nom: "Nuts", ville: "Biarritz", type: "Healthy / Bowls", prix: "€", statut: "À tester", url: "", note: "Très bon et frais." },
+            { id: 61, nom: "Le Bar Jean (Tapas)", ville: "Biarritz", type: "Pintxos", prix: "€", statut: "À tester", url: "", note: "Côté bar pour grignoter sans se ruiner." },
+            
+            // BIARRITZ - €€ (Abordable)
+            { id: 62, nom: "Chéri Bibi", ville: "Biarritz", type: "Vins natures / Assiettes", prix: "€€", statut: "À tester", url: "", note: "Hyper branché, super vins." },
+            { id: 63, nom: "Caroe", ville: "Biarritz", type: "Nordique / Poissons", prix: "€€", statut: "Validé", url: "", note: "Incontournable pour les amoureux de poisson." },
+            { id: 64, nom: "Saline Ceviche Bar", ville: "Biarritz", type: "Ceviche", prix: "€€", statut: "À tester", url: "", note: "Frais, healthy, parfait en été." },
+            { id: 65, nom: "Chez BB", ville: "Biarritz", type: "Bistrot Parisien", prix: "€€", statut: "À tester", url: "", note: "Très chic, déco soignée." },
+            { id: 66, nom: "Jack the Cockerel", ville: "Biarritz", type: "Brasserie", prix: "€€", statut: "À tester", url: "", note: "Aux Halles, ambiance survoltée le soir." },
+            { id: 67, nom: "Eden Rock Café", ville: "Biarritz", type: "Tapas vue mer", prix: "€€", statut: "À tester", url: "", note: "Spot caché dans les rochers au Port-Vieux." },
+            { id: 68, nom: "L'Artnoa", ville: "Biarritz", type: "Bar à Vins", prix: "€€", statut: "À tester", url: "", note: "Pour accompagner de très bons verres." },
+            { id: 69, nom: "La Crique", ville: "Biarritz", type: "Huîtres / Fruits de mer", prix: "€€", statut: "À tester", url: "", note: "Hyper frais et iodé." },
+            { id: 70, nom: "Le CAB", ville: "Biarritz", type: "Burger haut de gamme", prix: "€€", statut: "À tester", url: "", note: "Comptoir à Burger, une valeur sûre." },
+            { id: 71, nom: "Café de la Grande Plage", ville: "Biarritz", type: "Brasserie", prix: "€€", statut: "À tester", url: "", note: "La vue fait tout le charme." },
+            { id: 72, nom: "Le B2", ville: "Biarritz", type: "Bistrot", prix: "€€", statut: "À tester", url: "", note: "Toujours bien cuisiné." },
+            { id: 73, nom: "Epoq", ville: "Biarritz", type: "Bistrot Moderne", prix: "€€", statut: "À tester", url: "", note: "Très à la mode." },
+            { id: 74, nom: "Bistrot des Halles", ville: "Biarritz", type: "Classique", prix: "€€", statut: "À tester", url: "", note: "Au cœur de l'animation." },
+            
+            // BIARRITZ - €€€ / €€€€ (Chic & Gastro)
+            { id: 75, nom: "L'Impertinent", ville: "Biarritz", type: "Étoilé", prix: "€€€€", statut: "À tester", url: "", note: "1 étoile Michelin, quartier Saint-Charles." },
+            { id: 76, nom: "Les Rosiers", ville: "Biarritz", type: "Étoilé", prix: "€€€€", statut: "À tester", url: "", note: "Cadeau d'anniv à prévoir ! 1 étoile." },
+            { id: 77, nom: "L'Entre Deux", ville: "Biarritz", type: "Gastro", prix: "€€€", statut: "À tester", url: "", note: "Excellent bistronomique très haut niveau." },
+            { id: 78, nom: "Sini", ville: "Biarritz", type: "Gastro intimiste", prix: "€€€", statut: "À tester", url: "", note: "Une très belle claque culinaire." },
+            { id: 79, nom: "Campagne et Gourmandise", ville: "Biarritz", type: "Vue / Gastro", prix: "€€€", statut: "À tester", url: "", note: "Sur les hauteurs de Biarritz." },
+            { id: 80, nom: "Le Café Basque", ville: "Biarritz", type: "Chic", prix: "€€€", statut: "À tester", url: "", note: "Cédric Béchade aux manettes." }
+        ];
+
+        let restos = [];
+        let currentCity = 'Tous';
+        let currentPrice = 'Tous';
+        let currentStatus = 'Tous';
+        let itemToDelete = null;
+
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try { 
+                    restos = JSON.parse(saved);
+                    if(restos.length === 0) restos = [...baseRestos];
+                } catch(e) { restos = [...baseRestos]; }
+            } else {
+                restos = [...baseRestos];
+            }
+            renderRestos();
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(restos));
+        }
+
+        function renderRestos() {
+            const container = document.getElementById('restos-container');
+            container.innerHTML = '';
+
+            const filtered = restos.filter(r => {
+                const matchCity = currentCity === 'Tous' || r.ville === currentCity;
+                const matchPrice = currentPrice === 'Tous' || r.prix === currentPrice;
+                const matchStatus = currentStatus === 'Tous' || r.statut === currentStatus;
+                return matchCity && matchPrice && matchStatus;
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-16 bg-white/5 rounded-2xl border border-white/10 mt-4">
+                        <div class="text-3xl mb-3 opacity-50">🍷</div>
+                        <h3 class="text-lg font-serif text-white/70">Aucune table trouvée</h3>
+                        <p class="text-sm text-chicMuted mt-1">Élargissez vos filtres ou ajoutez une adresse.</p>
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(resto => {
+                let statusBadge = resto.statut === 'Validé' 
+                    ? '<span class="text-xs font-semibold px-2 py-1 bg-chicGold/20 text-chicGold rounded-md border border-chicGold/30">✨ Approuvé</span>'
+                    : '<span class="text-xs font-medium px-2 py-1 bg-white/10 text-chicMuted rounded-md border border-white/10">🍽️ À tester</span>';
+
+                const card = document.createElement('div');
+                card.className = "resto-card bg-chicCard border border-white/10 p-5 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:bg-white/[0.03] hover:border-white/20 group relative overflow-hidden";
+                card.dataset.id = resto.id; // Pour la roulette
+                
+                // Petit effet de lumière en fond
+                const glow = `<div class="absolute -top-10 -right-10 w-24 h-24 bg-chicGold/5 rounded-full blur-2xl group-hover:bg-chicGold/10 transition-all"></div>`;
+
+                card.innerHTML = `
+                    ${glow}
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-[10px] uppercase tracking-widest text-chicMuted font-semibold">${resto.ville}</span>
+                                <h3 class="text-xl font-serif text-white mt-1 group-hover:text-chicGold transition-colors">${resto.nom}</h3>
+                            </div>
+                            <button onclick="requestDelete(${resto.id})" class="text-white/20 hover:text-red-400 transition-colors p-1" title="Retirer de la carte">
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-xs font-medium bg-black/50 text-white/80 px-2 py-1 rounded border border-white/5">${resto.type}</span>
+                            <span class="text-xs font-bold text-chicGold">${resto.prix}</span>
+                        </div>
+
+                        ${resto.note ? `<p class="text-sm text-white/60 italic font-serif leading-relaxed mb-4 border-l-2 border-chicGold/30 pl-3">« ${resto.note} »</p>` : ''}
+                    </div>
+                    
+                    <div class="flex items-center justify-between mt-auto pt-4 border-t border-white/10 relative z-10">
+                        <button onclick="toggleStatus(${resto.id})" class="transition-transform active:scale-95">
+                            ${statusBadge}
+                        </button>
+                        
+                        ${resto.url ? `<a href="${resto.url}" target="_blank" class="text-xs text-white/50 hover:text-chicGold uppercase tracking-wider font-semibold transition-colors flex items-center gap-1">Lien <span>↗</span></a>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function setCity(city) {
+            currentCity = city;
+            document.querySelectorAll('.city-btn').forEach(btn => {
+                if(btn.innerText === city || (city === 'Tous' && btn.innerText === 'Côte Basque')) {
+                    btn.className = "city-btn active shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-chicGold bg-chicGold text-chicBg font-medium";
+                } else {
+                    btn.className = "city-btn shrink-0 px-5 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50";
+                }
+            });
+            renderRestos();
+        }
+
+        function setPrice(price) {
+            currentPrice = price;
+            document.querySelectorAll('.price-btn').forEach(btn => {
+                if(btn.innerText.includes(price) || (price === 'Tous' && btn.innerText === 'Tous les prix')) {
+                    btn.className = "price-btn active shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-chicGold bg-chicGold text-chicBg font-medium";
+                } else {
+                    btn.className = "price-btn shrink-0 px-4 py-1.5 rounded-full text-sm transition-all border border-white/20 text-white hover:border-chicGold/50";
+                }
+            });
+            renderRestos();
+        }
+
+        function setStatus(stat) {
+            currentStatus = stat;
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.className = "status-btn flex-1 py-1.5 rounded-lg text-sm font-medium text-chicMuted hover:text-white transition-all";
+            });
+            const activeBtn = document.getElementById(`status-${stat}`);
+            activeBtn.className = "status-btn flex-1 py-1.5 rounded-lg text-sm font-medium bg-white/10 text-white transition-all shadow-sm";
+            renderRestos();
+        }
+
+        window.toggleStatus = function(id) {
+            const index = restos.findIndex(r => r.id === id);
+            if (index > -1) {
+                restos[index].statut = restos[index].statut === 'À tester' ? 'Validé' : 'À tester';
+                saveData();
+                renderRestos();
+            }
+        };
+
+        window.requestDelete = function(id) {
+            itemToDelete = id;
+            document.getElementById('confirm-modal').showModal();
+        };
+
+        window.closeConfirmModal = function() {
+            itemToDelete = null;
+            document.getElementById('confirm-modal').close();
+        };
+
+        document.getElementById('btn-confirm-delete').addEventListener('click', () => {
+            if (itemToDelete !== null) {
+                restos = restos.filter(r => r.id !== itemToDelete);
+                saveData();
+                renderRestos();
+                closeConfirmModal();
+            }
+        });
+
+        window.openAddModal = () => document.getElementById('add-modal').showModal();
+        window.closeAddModal = () => {
+            document.getElementById('add-modal').close();
+            document.getElementById('add-form').reset();
+        };
+
+        window.submitNewResto = function(e) {
+            e.preventDefault();
+            const newResto = {
+                id: Date.now(),
+                nom: document.getElementById('f-nom').value,
+                ville: document.getElementById('f-ville').value,
+                type: document.getElementById('f-type').value,
+                prix: document.getElementById('f-prix').value,
+                statut: document.getElementById('f-statut').value,
+                url: document.getElementById('f-url').value,
+                note: document.getElementById('f-note').value
+            };
+
+            restos.unshift(newResto); 
+            saveData();
+            
+            // Revenir au filtre général pour voir l'ajout
+            setCity('Tous');
+            setPrice('Tous');
+            setStatus('Tous');
+            
+            closeAddModal();
+        };
+
+        window.triggerRoulette = function() {
+            const cards = Array.from(document.querySelectorAll('.resto-card'));
+            if (cards.length < 2) return; // Pas besoin de roulette s'il y a 0 ou 1 resto
+
+            // Bloquer le clic pendant l'animation
+            const btn = document.querySelector('button[onclick="triggerRoulette()"]');
+            btn.disabled = true;
+            btn.innerHTML = `<span class="text-xl">⏳</span> Recherche...`;
+            btn.classList.add('opacity-70');
+
+            let spins = 0;
+            const maxSpins = 25; // Nombre de "sauts"
+            const spinInterval = 100; // Vitesse de la roulette
+
+            // Retirer l'ancien gagnant s'il y en a un
+            cards.forEach(c => c.classList.remove('winner-card'));
+
+            const interval = setInterval(() => {
+                // Tout désélectionner
+                cards.forEach(c => c.classList.remove('roulette-active'));
+                
+                // Sélectionner une carte au hasard
+                const randomCard = cards[Math.floor(Math.random() * cards.length)];
+                randomCard.classList.add('roulette-active');
+                
+                spins++;
+
+                if (spins >= maxSpins) {
+                    clearInterval(interval);
+                    
+                    // L'animation est finie, on désigne le vrai gagnant
+                    cards.forEach(c => c.classList.remove('roulette-active'));
+                    const finalWinner = cards[Math.floor(Math.random() * cards.length)];
+                    
+                    finalWinner.classList.add('winner-card');
+                    
+                    // Scroller doucement vers le gagnant
+                    finalWinner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Remettre le bouton à la normale
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = `<span class="text-xl">🎲</span> Au Hasard`;
+                        btn.classList.remove('opacity-70');
+                    }, 1000);
+                }
+            }, spinInterval);
+        };
+
+        // Lancement au chargement
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
